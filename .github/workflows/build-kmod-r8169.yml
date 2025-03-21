@@ -1,0 +1,60 @@
+name: Build kmod-r8169 for OpenWrt 24.10.0
+
+on:
+  push:
+    branches:
+      - v24.10.0
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 检出代码
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: v24.10.0
+
+    # 安装依赖
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential git subversion libncurses5-dev zlib1g-dev gawk flex quilt
+
+    # 初始化OpenWrt构建环境
+    - name: Initialize OpenWrt build environment
+      run: |
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    # 创建默认配置
+    - name: Create default configuration
+      run: |
+        cat > .config << EOF
+        CONFIG_TARGET_bcm27xx=y
+        CONFIG_TARGET_bcm27xx_bcm2712=y
+        CONFIG_TARGET_DEVICE_bcm27xx_bcm2712_rpi_5=y
+        CONFIG_PACKAGE_kmod-r8169=m
+        EOF
+        make defconfig
+
+    # 调整内核版本到6.6.75
+    - name: Adjust kernel version to 6.6.75
+      run: |
+        sed -i 's/LINUX_VERSION-6\.6 = .*/LINUX_VERSION-6.6 = .75/' target/linux/bcm27xx/Makefile
+        make target/linux/clean
+        make target/linux/prepare
+
+    # 编译kmod-r8169模块
+    - name: Compile kmod-r8169
+      run: |
+        make -j$(nproc) V=s package/kernel/linux/compile
+
+    # 上传编译结果
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kmod-r8169
+        path: bin/targets/bcm27xx/bcm2712/packages/kmod-r8169_*.ipk
