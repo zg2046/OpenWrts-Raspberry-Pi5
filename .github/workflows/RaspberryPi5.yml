@@ -18,7 +18,8 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
-
+  KERNEL_VERSION: 6.6.73  # 新增环境变量指定内核版本
+  
 jobs:
   build:
     runs-on: ubuntu-20.04
@@ -47,6 +48,16 @@ jobs:
         git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /mnt/workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
+    - name: Set kernel version
+      run: |
+        cd openwrt
+        # 修改 bcm27xx 目标的 Makefile，指定内核版本
+        sed -i 's/KERNEL_PATCHVER:=.*/KERNEL_PATCHVER:=${{ env.KERNEL_VERSION }}/' target/linux/bcm27xx/Makefile
+        # 可选：如果需要指定测试版本
+        sed -i 's/KERNEL_TESTING_PATCHVER:=.*/KERNEL_TESTING_PATCHVER:=${{ env.KERNEL_VERSION }}/' target/linux/bcm27xx/Makefile
+        # 确认修改结果
+        grep "KERNEL_PATCHVER" target/linux/bcm27xx/Makefile
+        
     - name: Cache
       uses: stupidloud/cachewrtbuild@main
       with:
