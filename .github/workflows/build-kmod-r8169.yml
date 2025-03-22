@@ -53,18 +53,6 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    # 应用自定义配置并确保正确目标
-    - name: Apply custom configuration
-      run: |
-        cd openwrt-source
-        cp ../configs/Driver.config .config
-        # 强制设置目标为 bcm27xx/bcm2712
-        echo "CONFIG_TARGET_bcm27xx=y" >> .config
-        echo "CONFIG_TARGET_bcm27xx_bcm2712=y" >> .config
-        echo "CONFIG_PACKAGE_kmod-r8169=m" >> .config
-        make defconfig
-        grep CONFIG_TARGET_bcm27xx .config  # 确认目标是否正确
-        grep CONFIG_PACKAGE_kmod-r8169 .config  # 确认配置是否生效
 
     # 调整内核版本到6.6.75
     - name: Adjust kernel version to 6.6.75
