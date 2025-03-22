@@ -39,7 +39,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential git subversion libncurses5-dev zlib1g-dev gawk flex quilt gcc g++ python3 python3-distutils
+        sudo apt-get install -y build-essential git subversion libncurses5-dev zlib1g-dev gawk flex quilt gcc g++ python3 python3-pip python3-setuptools
         cd openwrt-source
         pwd
         ls -la
