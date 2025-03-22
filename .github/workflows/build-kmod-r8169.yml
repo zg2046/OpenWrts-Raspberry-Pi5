@@ -74,6 +74,12 @@ jobs:
         make target/linux/clean
         make target/linux/prepare V=s
 
+    - name: Build toolchain
+      run: |
+        cd openwrt-source
+        make -j$(nproc) V=s tools/install
+        make -j$(nproc) V=s toolchain/install
+        
     # 编译kmod-r8169模块
     - name: Compile kmod-r8169
       run: |
