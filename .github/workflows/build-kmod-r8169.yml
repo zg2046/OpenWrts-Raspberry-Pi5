@@ -3,7 +3,7 @@ name: Build kmod-r8169 for OpenWrt 24.10.0
 on:
   push:
     branches:
-      - v24.10.0
+      - main
   workflow_dispatch:  # 允许手动触发
 
 jobs:
@@ -11,38 +11,60 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 检出代码
-    - name: Checkout
+    # 检出当前仓库
+    - name: Checkout custom repository
       uses: actions/checkout@v4
       with:
-        ref: v24.10.0
+        ref: main
+
+    # 克隆官方OpenWrt源码
+    - name: Clone OpenWrt source
+      run: |
+        git clone https://github.com/openwrt/openwrt.git openwrt-source
+        cd openwrt-source
+        git checkout v24.10.0
+        pwd  # 打印当前目录以调试
+        ls -la  # 列出目录内容以确认
+
+    # 复制自定义配置
+    - name: Copy custom configurations
+      run: |
+        cp -r ../configs openwrt-source/configs || true
+        cp ../configure.sh openwrt-source/configure.sh || true
+        cd openwrt-source
+        pwd
+        ls -la
 
     # 安装依赖
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential git subversion libncurses5-dev zlib1g-dev gawk flex quilt
+        sudo apt-get install -y build-essential git subversion libncurses5-dev zlib1g-dev gawk flex quilt gcc g++ python3 python3-distutils
+        cd openwrt-source
+        pwd
+        ls -la
 
     # 初始化OpenWrt构建环境
     - name: Initialize OpenWrt build environment
       run: |
+        cd openwrt-source
+        pwd
+        ls -la scripts/  # 确认scripts目录存在
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    # 创建默认配置
-    - name: Create default configuration
+    # 应用自定义配置
+    - name: Apply custom configuration
       run: |
-        cat > .config << EOF
-        CONFIG_TARGET_bcm27xx=y
-        CONFIG_TARGET_bcm27xx_bcm2712=y
-        CONFIG_TARGET_DEVICE_bcm27xx_bcm2712_rpi_5=y
-        CONFIG_PACKAGE_kmod-r8169=m
-        EOF
+        cd openwrt-source
+        cp ../configs/Driver.config .config
         make defconfig
+        grep CONFIG_PACKAGE_kmod-r8169 .config  # 确认配置是否生效
 
     # 调整内核版本到6.6.75
     - name: Adjust kernel version to 6.6.75
       run: |
+        cd openwrt-source
         sed -i 's/LINUX_VERSION-6\.6 = .*/LINUX_VERSION-6.6 = .75/' target/linux/bcm27xx/Makefile
         make target/linux/clean
         make target/linux/prepare
@@ -50,6 +72,7 @@ jobs:
     # 编译kmod-r8169模块
     - name: Compile kmod-r8169
       run: |
+        cd openwrt-source
         make -j$(nproc) V=s package/kernel/linux/compile
 
     # 上传编译结果
@@ -57,4 +80,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: kmod-r8169
-        path: bin/targets/bcm27xx/bcm2712/packages/kmod-r8169_*.ipk
+        path: openwrt-source/bin/targets/bcm27xx/bcm2712/packages/kmod-r8169_*.ipk
