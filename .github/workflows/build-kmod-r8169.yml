@@ -23,8 +23,8 @@ jobs:
         git clone https://github.com/openwrt/openwrt.git openwrt-source
         cd openwrt-source
         git checkout v24.10.0
-        pwd  # 打印当前目录以调试
-        ls -la  # 列出目录内容以确认
+        pwd
+        ls -la
 
     # 复制自定义配置
     - name: Copy custom configurations
@@ -49,20 +49,24 @@ jobs:
       run: |
         cd openwrt-source
         pwd
-        ls -la scripts/  # 确认 scripts 目录存在
+        ls -la scripts/
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    # 使用默认配置生成 .config 文件
-    - name: Generate default configuration
+    # 使用默认配置生成 .config 文件并准备内核
+    - name: Generate default configuration and prepare kernel
       run: |
         cd openwrt-source
         make defconfig
-        # 确保目标为 bcm27xx/bcm2712
+        # 确保目标为 bcm27xx/bcm2712 并启用所有内核模块
         echo "CONFIG_TARGET_bcm27xx=y" >> .config
         echo "CONFIG_TARGET_bcm27xx_bcm2712=y" >> .config
-        echo "CONFIG_ALL_KMODS=y" >> .config  # 启用所有内核模块，包括 kmod-r8169
-        make oldconfig  # 更新配置以应用更改
+        echo "CONFIG_ALL_KMODS=y" >> .config
+        make oldconfig V=s  # 更新配置以应用更改
+        make target/linux/clean V=s
+        make target/linux/prepare V=s
+        # 验证 .config 文件是否存在
+        ls -l build_dir/target-aarch64_cortex-a76_musl/linux-bcm27xx_bcm2712/linux-6.6.75/.config || echo "Kernel .config not found!"
 
     # 调整内核版本到 6.6.75
     - name: Adjust kernel version to 6.6.75
@@ -84,7 +88,6 @@ jobs:
       run: |
         cd openwrt-source
         make -j$(nproc) V=s package/kernel/linux/compile
-        # 单独编译 kmod-r8169 以确保其生成
         make -j$(nproc) V=s package/kernel/kmod-r8169/compile
 
     # 上传编译结果
