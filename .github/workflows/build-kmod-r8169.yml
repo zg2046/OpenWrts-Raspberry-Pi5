@@ -17,7 +17,7 @@ jobs:
       with:
         ref: main
 
-    # 克隆官方OpenWrt源码
+    # 克隆官方 OpenWrt 源码
     - name: Clone OpenWrt source
       run: |
         git clone https://github.com/openwrt/openwrt.git openwrt-source
@@ -39,40 +39,53 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential git subversion libncurses5-dev zlib1g-dev gawk flex quilt gcc g++ python3 python3-pip python3-setuptools
+        sudo apt-get install -y build-essential git subversion libncurses5-dev zlib1g-dev gawk flex quilt gcc g++ python3 python3-pip python3-setuptools gcc-aarch64-linux-gnu
         cd openwrt-source
         pwd
         ls -la
 
-    # 初始化OpenWrt构建环境
+    # 初始化 OpenWrt 构建环境
     - name: Initialize OpenWrt build environment
       run: |
         cd openwrt-source
         pwd
-        ls -la scripts/  # 确认scripts目录存在
+        ls -la scripts/  # 确认 scripts 目录存在
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
+    # 使用默认配置生成 .config 文件
+    - name: Generate default configuration
+      run: |
+        cd openwrt-source
+        make defconfig
+        # 确保目标为 bcm27xx/bcm2712
+        echo "CONFIG_TARGET_bcm27xx=y" >> .config
+        echo "CONFIG_TARGET_bcm27xx_bcm2712=y" >> .config
+        echo "CONFIG_ALL_KMODS=y" >> .config  # 启用所有内核模块，包括 kmod-r8169
+        make oldconfig  # 更新配置以应用更改
 
-    # 调整内核版本到6.6.75
+    # 调整内核版本到 6.6.75
     - name: Adjust kernel version to 6.6.75
       run: |
         cd openwrt-source
         sed -i 's/LINUX_VERSION-6\.6 = .*/LINUX_VERSION-6.6 = .75/' target/linux/bcm27xx/Makefile
-        make target/linux/clean
+        make target/linux/clean V=s
         make target/linux/prepare V=s
 
+    # 构建工具链
     - name: Build toolchain
       run: |
         cd openwrt-source
         make -j$(nproc) V=s tools/install
         make -j$(nproc) V=s toolchain/install
-        
-    # 编译kmod-r8169模块
+
+    # 编译 kmod-r8169 模块
     - name: Compile kmod-r8169
       run: |
         cd openwrt-source
         make -j$(nproc) V=s package/kernel/linux/compile
+        # 单独编译 kmod-r8169 以确保其生成
+        make -j$(nproc) V=s package/kernel/kmod-r8169/compile
 
     # 上传编译结果
     - name: Upload artifacts
