@@ -60,8 +60,10 @@ jobs:
         make defconfig
         # 确保目标为 bcm27xx/bcm2712 并启用所有内核模块
         echo "CONFIG_TARGET_bcm27xx=y" >> .config
-        echo "CONFIG_TARGET_bcm27xx_bcm2712=y" >> .config
-        echo "CONFIG_ALL_KMODS=y" >> .config
+        echo "CONFIG_TARGET_bcm27xx_bcm2712=y" >> .config        
+        echo "CONFIG_TARGET_bcm27xx_bcm2712_DEVICE_rpi-5=y" >> .config
+        echo "CONFIG_PACKAGE_r8169-firmware=m" >> .config
+
         make oldconfig V=s  # 更新配置以应用更改
         make target/linux/clean V=s
         make target/linux/prepare V=s
